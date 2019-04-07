@@ -1,0 +1,85 @@
+---
+title: "RR Week 2 assignment"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Set working directory and read/transform steps database
+```{r, echo = TRUE}
+setwd("~/Documents/Documenten/R/Reproducible Research/Assignment week 2")
+activity <- read.csv("activity.csv")
+activity <- transform(activity, date = as.Date(activity$date))
+activity <- transform(activity, steps = as.numeric(activity$steps))
+activity <- transform(activity, interval = as.numeric(activity$interval))
+```
+
+##Histogram of steps total
+```{r, echo = TRUE}
+hist(activity$steps, xlab = "number of steps", ylab = "amount of steps", col = "green")
+```
+
+##Mean and median number of steps
+```{r, echo = TRUE}
+mean_steps <- tapply(activity$steps, activity$date, mean)
+median_steps <- tapply(activity$steps, activity$date, median)
+frame <- data.frame(mean_steps, median_steps)
+frame
+```
+
+##Plot of steps on average each day
+```{r, echo = TRUE}
+agg <- aggregate(steps ~ date, activity, mean)
+plot(agg$date, agg$steps, type = "l")
+```
+
+##Which interval has most steps on average per day?
+```{r, echo = TRUE}
+agg_int <- aggregate(.~ interval, activity, max)
+agg_int[which.max(agg_int$steps), ]
+```
+
+##Missing values and imputation
+```{r, echo = TRUE}
+table(is.na(activity))
+library(Hmisc)
+activity_noNA <- activity
+activity_noNA$steps <- with(activity_noNA, impute(steps, mean))
+head(activity_noNA)
+```
+
+##Histogram for imputed set and check if there are differences in mean and median values afterwards
+```{r, echo = TRUE}
+hist(activity_noNA$steps, xlab = "number of steps", ylab = "frequency", col = "green")
+```
+
+We see that the there is a higher frequency of a low number of steps per interval.
+
+```{r, echo = TRUE}
+mean_steps_noNA <- tapply(activity_noNA$steps, activity_noNA$date, mean)
+median_steps_noNa <- tapply(activity_noNA$steps, activity_noNA$date, median)
+frame_noNA <- data.frame(mean_steps_noNA, median_steps_noNa)
+head(frame_noNA)
+diff <- cbind(frame, frame_noNA)
+head(diff)
+```
+
+We also see that there is no difference between the mean and median values for both sets.
+
+##Difference in amount of steps per interval for weekend or weekdays?
+```{r, echo = TRUE}
+weekday <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+activity_noNA$daytype <- factor((weekdays(activity_noNA$date) %in% weekday), levels = c(FALSE, TRUE), labels = c("Weekend", "Weekday"))
+agg_day <- aggregate(steps ~ interval + daytype, activity_noNA, mean)
+```
+
+Save the plot to a file!
+
+```{r, echo = TRUE}
+g <- ggplot(data = agg_day, aes(interval, steps))
+p <- g + geom_line(color = "red") + facet_grid(daytype~.) + labs(title = "Average steps per interval on weekdays or in the weekend")
+p;
+ggsave('steps.png', width = 16, height = 9, dpi = 100)
+```
